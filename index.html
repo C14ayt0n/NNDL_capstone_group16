@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Food Nutrients Demo</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+  <script defer src="app.js"></script>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 20px; }
+    h1 { font-size: 24px; margin-bottom: 10px; }
+    #preview-container { margin-top: 15px; display: flex; gap: 20px; align-items: flex-start; }
+    #preview { max-width: 224px; max-height: 224px; border: 1px solid #ccc; }
+    #results { margin-top: 20px; }
+    table { border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: right; }
+    th:first-child, td:first-child { text-align: left; }
+    #status { margin-top: 10px; color: #555; }
+    input[type="file"] { margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h1>Nutrition5k Nutrients Prediction</h1>
+  <p>Загрузите цветное RGB‑изображение блюда (PNG/JPEG) из Nutrition5k, чтобы получить предсказания калорийности и БЖУ.</p>
+
+  <input id="file-input" type="file" accept="image/png,image/jpeg" />
+  <div id="status">Модель загружается...</div>
+
+  <div id="preview-container">
+    <div>
+      <div>Превью изображения:</div>
+      <img id="preview" alt="Preview" />
+    </div>
+    <div id="results">
+      <div>Предсказанные значения:</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Параметр</th>
+            <th>Значение</th>
+            <th>Единицы</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Калории</td><td id="calories">–</td><td>ккал</td></tr>
+          <tr><td>Белки</td><td id="protein">–</td><td>г</td></tr>
+          <tr><td>Жиры</td><td id="fat">–</td><td>г</td></tr>
+          <tr><td>Углеводы</td><td id="carbs">–</td><td>г</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</body>
+</html>
