@@ -1,11 +1,11 @@
 let model = null;
 
-// Загрузка модели при старте страницы
+// загрузка модели
 window.addEventListener('load', async () => {
   const statusEl = document.getElementById('status');
   try {
     statusEl.textContent = 'Загружается модель...';
-    // model.json и shard*.bin лежат в той же папке
+    // model.json и group1-shard*.bin лежат в той же папке
     model = await tf.loadGraphModel('./model.json');
     statusEl.textContent = 'Модель загружена. Выберите изображение.';
   } catch (err) {
@@ -17,7 +17,7 @@ window.addEventListener('load', async () => {
   fileInput.addEventListener('change', handleFileChange);
 });
 
-// Обработка выбора файла
+// обработка выбора файла
 function handleFileChange(event) {
   const file = event.target.files[0];
   if (!file) return;
@@ -34,8 +34,8 @@ function handleFileChange(event) {
     img.onload = async () => {
       statusEl.textContent = 'Выполняется предсказание...';
       try {
-        const predictions = await runInferenceOnImageElement(img);
-        updateResults(predictions);
+        const preds = await runInferenceOnImage(img);
+        updateResults(preds);
         statusEl.textContent = 'Готово.';
       } catch (err) {
         console.error(err);
@@ -47,51 +47,45 @@ function handleFileChange(event) {
   reader.readAsDataURL(file);
 }
 
-// Препроцессинг и инференс для <img>
-async function runInferenceOnImageElement(img) {
-  // Внимание: если датасет/обучение использовали другой препроцессинг,
-  // здесь нужно воспроизвести тот же самый пайплайн.
-  // Для EfficientNetV2 обычно: масштабирование к [0,1], затем нормализация.
+// препроцессинг как в ноутбуке encode0: Rescaling(1/255) перед EfficientNetV2 с include_preprocessing=True
+function runInferenceOnImage(img) {
   return tf.tidy(() => {
-    // 1. fromPixels -> [H, W, 3]
-    let tensor = tf.browser.fromPixels(img).toFloat();
+    // 1) из пикселей -> float32
+    let x = tf.browser.fromPixels(img).toFloat(); // [H,W,3]
 
-    // 2. resize до 224x224
-    tensor = tf.image.resizeBilinear(tensor, [224, 224], true);
+    // 2) resize до 224x224 (как в модели)
+    x = tf.image.resizeBilinear(x, [224, 224], true);
 
-    // 3. Масштабирование в [0,1]
-    tensor = tensor.div(255.0);
+    // 3) масштабирование в [0,1] (Rescaling(1/255))
+    x = x.div(255.0);
 
-    // 4. NCHW -> добавляем batch dimension: [1, 224, 224, 3]
-    tensor = tensor.expandDims(0);
+    // 4) добавление batch dimension
+    x = x.expandDims(0); // [1,224,224,3]
 
-    // 5. Вызов модели
-    const output = model.execute
-      ? model.execute(tensor)
-      : model.predict(tensor);
+    // 5) явный вызов выходного тензора модели
+    // в model.json выход называется Identity:0 (output_0)
+    const y = model.execute(x, 'Identity:0'); // [1,5]
 
-    // Ожидаем выход формы [1, 5]
-    const values = output.dataSync(); // Float32Array длиной 5
+    const vals = y.dataSync(); // Float32Array длиной 5
 
-    // Берём первые 4: [calories, protein, fat, carbs]
-    const calories = round1(values[0]);
-    const protein  = round1(values[1]);
-    const fat      = round1(values[2]);
-    const carbs    = round1(values[3]);
+    // порядок как в dish_ingredients / ноутбуке:
+    // [total_calories, total_fat, total_carb, total_protein, ...]
+    const calories = round1(vals[0]);
+    const fat      = round1(vals[1]);
+    const carbs    = round1(vals[2]);
+    const protein  = round1(vals[3]);
 
-    return { calories, protein, fat, carbs };
+    return { calories, fat, carbs, protein };
   });
 }
 
-// Округление до 1 знака
 function round1(x) {
   return Math.round(x * 10) / 10;
 }
 
-// Обновление DOM с результатами
-function updateResults(pred) {
-  document.getElementById('calories').textContent = pred.calories;
-  document.getElementById('protein').textContent  = pred.protein;
-  document.getElementById('fat').textContent      = pred.fat;
-  document.getElementById('carbs').textContent    = pred.carbs;
+function updateResults(p) {
+  document.getElementById('calories').textContent = p.calories;
+  document.getElementById('fat').textContent      = p.fat;
+  document.getElementById('carbs').textContent    = p.carbs;
+  document.getElementById('protein').textContent  = p.protein;
 }
