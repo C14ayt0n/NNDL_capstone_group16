@@ -1,23 +1,22 @@
 // глобальная ссылка на модель
 let model = null;
 
-// !!! ВАЖНО: сюда нужно подставить реальные mean/std,
-// которые ты получил в ноутбуке encode0 для
-// [total_calories, total_mass, total_fat, total_carb, total_protein]
+// статистики таргетов из ноутбука encode0
+// порядок: [total_calories, total_mass, total_fat, total_carb, total_protein]
 const NUTRITION_MEAN = [
-  /* total_calories_mean */,
-  /* total_mass_mean */,
-  /* total_fat_mean */,
-  /* total_carb_mean */,
-  /* total_protein_mean */
+  257.7,  // calories mean
+  214.42, // mass mean
+  12.97,  // fat mean
+  19.28,  // carb mean
+  18.26   // protein mean
 ];
 
 const NUTRITION_STD = [
-  /* total_calories_std */,
-  /* total_mass_std */,
-  /* total_fat_std */,
-  /* total_carb_std */,
-  /* total_protein_std */
+  211.42, // calories std
+  153.17, // mass std
+  13.72,  // fat std
+  16.17,  // carb std
+  20.14   // protein std
 ];
 
 // загрузка модели при старте страницы
@@ -28,11 +27,12 @@ window.addEventListener('load', async () => {
     statusEl.textContent = 'Загружается модель...';
 
     // model.json и group1-shard*.bin лежат в той же папке
-    model = await tf.loadGraphModel('./model.json');
+    // страница должна открываться по http://, а не file://
+    model = await tf.loadGraphModel('model.json');
 
     statusEl.textContent = 'Модель загружена. Выберите изображение.';
   } catch (err) {
-    console.error(err);
+    console.error('Ошибка загрузки модели:', err);
     statusEl.textContent =
       'Ошибка загрузки модели. Проверьте путь к model.json.';
   }
@@ -57,7 +57,6 @@ function handleFileChange(event) {
 
   const reader = new FileReader();
 
-  // когда файл прочитан — показываем превью и запускаем инференс
   reader.onload = () => {
     const img = document.getElementById('preview');
     if (!img) return;
@@ -70,7 +69,7 @@ function handleFileChange(event) {
         updateResults(preds);
         statusEl.textContent = 'Готово.';
       } catch (err) {
-        console.error(err);
+        console.error('Ошибка при предсказании:', err);
         statusEl.textContent = 'Ошибка при предсказании. См. консоль.';
       }
     };
@@ -90,8 +89,7 @@ function runInferenceOnImage(img) {
     // 2) resize до 224x224 (как в модели)
     x = tf.image.resizeBilinear(x, [224, 224], true);
 
-    // 3) НЕ делим на 255, т.к. внутри EfficientNetV2 уже есть Rescaling(1/255)
-    // при include_preprocessing=True в Keras-модели
+    // 3) НЕ делим на 255, EfficientNetV2 внутри сама делает Rescaling(1/255) [web:7]
 
     // 4) добавление batch dimension
     x = x.expandDims(0); // [1, 224, 224, 3]
@@ -101,12 +99,14 @@ function runInferenceOnImage(img) {
 
     // y содержит нормированные значения (z-скоры)
     const vals = y.dataSync(); // Float32Array длиной 5
+    console.log('raw z-scores:', vals);
 
-    // денормализация по формуле y = z * std + mean
+    // денормализация: y = z * std + mean
     const denorm = new Array(vals.length);
     for (let i = 0; i < vals.length; i++) {
       denorm[i] = vals[i] * NUTRITION_STD[i] + NUTRITION_MEAN[i];
     }
+    console.log('denormalized:', denorm);
 
     // порядок признаков: [calories, mass, fat, carb, protein]
     const calories = round1(denorm[0]);
@@ -130,7 +130,7 @@ function updateResults(p) {
   const fatEl = document.getElementById('fat');
   const carbsEl = document.getElementById('carbs');
   const proteinEl = document.getElementById('protein');
-  const massEl = document.getElementById('mass'); // опционально, если есть такой элемент
+  const massEl = document.getElementById('mass'); // опционально
 
   if (caloriesEl) caloriesEl.textContent = p.calories;
   if (fatEl) fatEl.textContent = p.fat;
