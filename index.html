@@ -2,14 +2,14 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <title>Food Nutrients Demo</title>
+  <title>Nutrition5k Nutrients Prediction</title>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
   <script defer src="app.js"></script>
   <style>
     body { font-family: system-ui, sans-serif; margin: 20px; }
     h1 { font-size: 24px; margin-bottom: 10px; }
     #preview-container { margin-top: 15px; display: flex; gap: 20px; align-items: flex-start; }
-    #preview { max-width: 224px; max-height: 224px; border: 1px solid #ccc; }
+    #preview { max-width: 224px; max-height: 224px; border: 1px solid #ccc; object-fit: contain; }
     #results { margin-top: 20px; }
     table { border-collapse: collapse; margin-top: 10px; }
     th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: right; }
@@ -31,7 +31,7 @@
       <img id="preview" alt="Preview" />
     </div>
     <div id="results">
-      <div>Предсказанные значения:</div>
+      <div>Предсказанные значения (порядок как в dish_ingredients):</div>
       <table>
         <thead>
           <tr>
@@ -42,9 +42,9 @@
         </thead>
         <tbody>
           <tr><td>Калории</td><td id="calories">–</td><td>ккал</td></tr>
-          <tr><td>Белки</td><td id="protein">–</td><td>г</td></tr>
           <tr><td>Жиры</td><td id="fat">–</td><td>г</td></tr>
           <tr><td>Углеводы</td><td id="carbs">–</td><td>г</td></tr>
+          <tr><td>Белки</td><td id="protein">–</td><td>г</td></tr>
         </tbody>
       </table>
     </div>
