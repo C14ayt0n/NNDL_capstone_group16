@@ -1,53 +1,254 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Nutrition5k Nutrients Prediction</title>
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
-  <script defer src="app.js"></script>
+  <title>NutritionAI – Nutrition5k Nutrients Prediction</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Fonts & basic styles (по аналогии с index-2.html) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link
+    rel="preconnect"
+    href="https://fonts.gstatic.com"
+    crossorigin
+  />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+
   <style>
-    body { font-family: system-ui, sans-serif; margin: 20px; }
-    h1 { font-size: 24px; margin-bottom: 10px; }
-    #preview-container { margin-top: 15px; display: flex; gap: 20px; align-items: flex-start; }
-    #preview { max-width: 224px; max-height: 224px; border: 1px solid #ccc; object-fit: contain; }
-    #results { margin-top: 20px; }
-    table { border-collapse: collapse; margin-top: 10px; }
-    th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: right; }
-    th:first-child, td:first-child { text-align: left; }
-    #status { margin-top: 10px; color: #555; }
-    input[type="file"] { margin-top: 10px; }
-  </style>
-</head>
-<body>
-  <h1>Nutrition5k Nutrients Prediction</h1>
-  <p>Загрузите цветное RGB‑изображение блюда (PNG/JPEG) из Nutrition5k, чтобы получить предсказания калорийности и БЖУ.</p>
+    :root {
+      --bg: #050816;
+      --bg-elevated: #0b1020;
+      --accent: #22c55e;
+      --accent-soft: rgba(34, 197, 94, 0.1);
+      --text: #f9fafb;
+      --text-muted: #9ca3af;
+      --border-subtle: #1f2933;
+      --danger: #f97373;
+    }
 
-  <input id="file-input" type="file" accept="image/png,image/jpeg" />
-  <div id="status">Модель загружается...</div>
+    * {
+      box-sizing: border-box;
+    }
 
-  <div id="preview-container">
-    <div>
-      <div>Превью изображения:</div>
-      <img id="preview" alt="Preview" />
-    </div>
-    <div id="results">
-      <div>Предсказанные значения (порядок как в dish_ingredients):</div>
-      <table>
-        <thead>
-          <tr>
-            <th>Параметр</th>
-            <th>Значение</th>
-            <th>Единицы</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr><td>Калории</td><td id="calories">–</td><td>ккал</td></tr>
-          <tr><td>Жиры</td><td id="fat">–</td><td>г</td></tr>
-          <tr><td>Углеводы</td><td id="carbs">–</td><td>г</td></tr>
-          <tr><td>Белки</td><td id="protein">–</td><td>г</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-</body>
-</html>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top, #111827 0, #020617 60%);
+      color: var(--text);
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 32px 16px 48px;
+    }
+
+    .container {
+      max-width: 1100px;
+      width: 100%;
+      background: radial-gradient(circle at top left, #111827 0, #020617 55%);
+      border-radius: 24px;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      box-shadow:
+        0 40px 80px rgba(15, 23, 42, 0.8),
+        0 0 0 1px rgba(15, 23, 42, 0.8);
+      padding: 28px 28px 32px;
+      display: grid;
+      grid-template-columns: minmax(0, 3fr) minmax(0, 2.4fr);
+      gap: 32px;
+    }
+
+    @media (max-width: 960px) {
+      .container {
+        grid-template-columns: minmax(0, 1fr);
+        padding: 24px 18px 28px;
+      }
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: 26px;
+      letter-spacing: 0.02em;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 2px 10px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(55, 65, 81, 0.7);
+      color: var(--text-muted);
+      font-size: 12px;
+      margin-bottom: 10px;
+    }
+
+    .badge-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: var(--accent);
+      box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.3);
+    }
+
+    .subtitle {
+      margin: 0 0 18px;
+      font-size: 14px;
+      color: var(--text-muted);
+      max-width: 540px;
+      line-height: 1.55;
+    }
+
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 18px;
+    }
+
+    .pill {
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      color: var(--text-muted);
+      background: rgba(15, 23, 42, 0.9);
+    }
+
+    .pill-accent {
+      border-color: rgba(34, 197, 94, 0.8);
+      color: #bbf7d0;
+      background: var(--accent-soft);
+    }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    .card {
+      background: rgba(15, 23, 42, 0.96);
+      border-radius: 18px;
+      border: 1px solid rgba(31, 41, 55, 0.9);
+      padding: 14px 16px 16px;
+    }
+
+    .card + .card {
+      margin-top: 12px;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .card-caption {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .status {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .status strong {
+      color: var(--accent);
+      font-weight: 500;
+    }
+
+    .status-error {
+      color: var(--danger);
+    }
+
+    .upload-zone {
+      border-radius: 14px;
+      border: 1px dashed rgba(148, 163, 184, 0.6);
+      background: radial-gradient(circle at top left, #020617 0, #020617 55%);
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .upload-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 7px 14px;
+      border-radius: 999px;
+      border: none;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      background: var(--accent);
+      color: #022c16;
+      box-shadow:
+        0 10px 18px rgba(22, 163, 74, 0.4),
+        0 0 0 1px rgba(22, 163, 74, 0.3);
+      transition: transform 0.06s ease, box-shadow 0.06s ease,
+        background 0.06s ease;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      box-shadow:
+        0 14px 24px rgba(22, 163, 74, 0.45),
+        0 0 0 1px rgba(22, 163, 74, 0.5);
+      background: #22c55e;
+    }
+
+    .btn:active {
+      transform: translateY(0);
+      box-shadow:
+        0 6px 12px rgba(22, 163, 74, 0.35),
+        0 0 0 1px rgba(22, 163, 74, 0.45);
+    }
+
+    .file-label {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .file-input {
+      display: none;
+    }
+
+    .preview-wrapper {
+      display: flex;
+      gap: 14px;
+      margin-top: 10px;
+      align-items: center;
+    }
+
+    .preview-box {
+      width: 170px;
+      height: 170px;
+      border-radius: 16px;
+      border: 1px solid var(--border-subtle);
+      background
