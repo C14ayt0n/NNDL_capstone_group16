@@ -4,37 +4,46 @@ let model = null;
 // статистики таргетов из ноутбука encode0
 // порядок: [total_calories, total_mass, total_fat, total_carb, total_protein]
 const NUTRITION_MEAN = [
-  257.7,  // calories mean
-  214.42, // mass mean
-  12.97,  // fat mean
-  19.28,  // carb mean
-  18.26   // protein mean
+  257.7,   // calories mean
+  214.42,  // mass mean
+  12.97,   // fat mean
+  19.28,   // carb mean
+  18.26    // protein mean
 ];
 
 const NUTRITION_STD = [
-  211.42, // calories std
-  153.17, // mass std
-  13.72,  // fat std
-  16.17,  // carb std
-  20.14   // protein std
+  211.42,  // calories std
+  153.17,  // mass std
+  13.72,   // fat std
+  16.17,   // carb std
+  20.14    // protein std
 ];
+
+// функция, которая строит корректный url до model.json
+// работает и локально, и на github pages (с базовым путём вида /NNDL_capstone_group16/)
+function getModelUrl() {
+  const baseUrl = window.location.href.replace(/index\.html?$/, '');
+  return new URL('model.json', baseUrl).toString();
+}
 
 // загрузка модели при старте страницы
 window.addEventListener('load', async () => {
   const statusEl = document.getElementById('status');
 
   try {
-    statusEl.textContent = 'Загружается модель...';
+    statusEl.textContent = 'загружается модель...';
 
-    // model.json и group1-shard*.bin лежат в той же папке
-    // страница должна открываться по http://, а не file://
-    model = await tf.loadGraphModel('model.json');
+    const modelUrl = getModelUrl();
+    console.log('загружаем модель из:', modelUrl);
 
-    statusEl.textContent = 'Модель загружена. Выберите изображение.';
+    // model.json и group1-shard*.bin лежат в той же папке, что и index.html
+    model = await tf.loadGraphModel(modelUrl);
+
+    statusEl.textContent = 'модель загружена. выберите изображение.';
   } catch (err) {
-    console.error('Ошибка загрузки модели:', err);
+    console.error('ошибка загрузки модели:', err);
     statusEl.textContent =
-      'Ошибка загрузки модели. Проверьте путь к model.json.';
+      'ошибка загрузки модели. проверьте путь к model.json.';
   }
 
   const fileInput = document.getElementById('file-input');
@@ -51,26 +60,27 @@ function handleFileChange(event) {
   const statusEl = document.getElementById('status');
 
   if (!model) {
-    statusEl.textContent = 'Модель ещё не загружена.';
+    statusEl.textContent = 'модель ещё не загружена.';
     return;
   }
 
   const reader = new FileReader();
 
+  // когда файл прочитан — показываем превью и запускаем инференс
   reader.onload = () => {
     const img = document.getElementById('preview');
     if (!img) return;
 
     img.onload = async () => {
-      statusEl.textContent = 'Выполняется предсказание...';
+      statusEl.textContent = 'выполняется предсказание...';
 
       try {
         const preds = await runInferenceOnImage(img);
         updateResults(preds);
-        statusEl.textContent = 'Готово.';
+        statusEl.textContent = 'готово.';
       } catch (err) {
-        console.error('Ошибка при предсказании:', err);
-        statusEl.textContent = 'Ошибка при предсказании. См. консоль.';
+        console.error('ошибка при предсказании:', err);
+        statusEl.textContent = 'ошибка при предсказании. см. консоль.';
       }
     };
 
@@ -84,17 +94,17 @@ function handleFileChange(event) {
 function runInferenceOnImage(img) {
   return tf.tidy(() => {
     // 1) из пикселей -> float32
-    let x = tf.browser.fromPixels(img).toFloat(); // [H, W, 3]
+    let x = tf.browser.fromPixels(img).toFloat(); // [H, w, 3]
 
-    // 2) resize до 224x224 (как в модели)
+    // 2) resize до 224x224 (как в исходной keras-модели) [web:7]
     x = tf.image.resizeBilinear(x, [224, 224], true);
 
-    // 3) НЕ делим на 255, EfficientNetV2 внутри сама делает Rescaling(1/255) [web:7]
+    // 3) не делим на 255, efficientnetv2 внутри сама делает rescaling(1/255)
 
-    // 4) добавление batch dimension
+    // 4) добавляем batch dimension
     x = x.expandDims(0); // [1, 224, 224, 3]
 
-    // 5) вызов выходного тензора модели (output_0 / Identity:0)
+    // 5) вызываем выходной тензор модели (output_0 / identity:0)
     const y = model.execute(x, 'Identity:0'); // [1, 5]
 
     // y содержит нормированные значения (z-скоры)
@@ -108,7 +118,7 @@ function runInferenceOnImage(img) {
     }
     console.log('denormalized:', denorm);
 
-    // порядок признаков: [calories, mass, fat, carb, protein]
+    // порядок признаков: [calories, mass, fat, carb, protein] [web:7]
     const calories = round1(denorm[0]);
     const mass = round1(denorm[1]);
     const fat = round1(denorm[2]);
@@ -130,7 +140,7 @@ function updateResults(p) {
   const fatEl = document.getElementById('fat');
   const carbsEl = document.getElementById('carbs');
   const proteinEl = document.getElementById('protein');
-  const massEl = document.getElementById('mass'); // опционально
+  const massEl = document.getElementById('mass'); // опционально, если есть такой элемент
 
   if (caloriesEl) caloriesEl.textContent = p.calories;
   if (fatEl) fatEl.textContent = p.fat;
